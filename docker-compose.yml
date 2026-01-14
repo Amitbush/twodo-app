@@ -1,14 +1,18 @@
-version: '3.8'
-
 services:
   db:
     image: postgres:14
     container_name: twodo_db_container
     restart: always
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: twodo_db
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    healthcheck:
+      # פקודה שבודקת אם ה-Postgres מוכן לקבל חיבורים
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     ports:
       - "5432:5432"
 
@@ -18,6 +22,8 @@ services:
     ports:
       - "5001:5001"
     environment:
-      - DATABASE_URL=postgresql://postgres:password@db:5432/twodo_db
+      - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
     depends_on:
-      - db
+      db:
+        # כאן קורה הקסם: האפליקציה תחכה עד שה-DB יהיה במצב healthy
+        condition: service_healthy
