@@ -15,3 +15,6 @@ venv/
 .env
 
 k8s/*.yaml
+
+# Helm secrets
+twodo-chart/secrets.yaml
