@@ -14,30 +14,24 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
-    
-    # בנייה והרצה ב-Docker Compose לבדיקה שהכל עולה
+
+      # --- יצירת תג ובנייה מתויגת ---
+      
+      - name: Set Image Tag
+        run: echo "IMAGE_TAG=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+
+      - name: Build Images with Tags
+        run: |
+          docker build ./frontend -t twodo-frontend:${{ env.IMAGE_TAG }}
+          docker build ./backend -t twodo-backend:${{ env.IMAGE_TAG }}
+          # יצירת תג latest מקומי עבור ה-compose שירוץ מיד אחרי
+          docker tag twodo-frontend:${{ env.IMAGE_TAG }} twodo-frontend:latest
+          docker tag twodo-backend:${{ env.IMAGE_TAG }} twodo-backend:latest
+
+      # בנייה והרצה ב-Docker Compose לבדיקה שהכל עולה
       - name: Build & Start App
         run: |
           docker compose up -d --build
-
-    #   - name: Set up Helm
-    #     uses: azure/setup-helm@v4
-    #     with:
-    #       version: 'latest'
-
-      # בדיקת תקינות ל-Helm Charts (לפי הנתיב שבו שמרנו את ה-K8s)
-    #   - name: Helm Lint
-    #     run: |
-    #       if [ -d "./k8s/twodo-chart" ]; then
-    #         helm lint ./k8s/twodo-chart
-    #       else
-    #         echo "Helm chart directory not found, skipping lint."
-    #       fi
-
-    #   # בנייה והרצה ב-Docker Compose לבדיקה שהכל עולה
-    #   - name: Build & Start App
-    #     run: |
-    #       docker-compose up -d --build
 
       # בדיקת תקינות (Health Check) - מחכים שהפרונטנד יעלה בפורט 5002
       - name: Wait for App Health
@@ -51,8 +45,8 @@ jobs:
             sleep 2
           done
           echo "App failed to start in time"
-          docker-compose ps
-          docker-compose logs
+          docker compose ps
+          docker compose logs
           exit 1
 
       # בדיקה שה-API של הבקנד מגיב בפורט 5001
