@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-11">
+        <div class="text-center mb-5">
+            <h2 class="fw-bold" style="color: var(--primary-pastel);">Our Shared Journey</h2>
+            <p class="text-muted">Organize your goals, celebrate your wins.</p>
+        </div>
+
+        <div class="card p-4 mb-5 shadow-sm border-0">
+            <form id="add-task-form">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <label class="form-label small text-muted">What's the plan?</label>
+                        <input type="text" name="task" class="form-control bg-light" placeholder="E.g. Weekend getaway" required>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small text-muted">Category</label>
+                        <select name="category" class="form-select bg-light">
+                            <option value="Home">🏠 Home & Decor</option>
+                            <option value="Finance">💰 Money & Bills</option>
+                            <option value="Date Night">❤️ Romance & Dates</option>
+                            <option value="Groceries">🛒 Kitchen & Food</option>
+                            <option value="Travel">✈️ Travel & Trips</option>
+                            <option value="Health">💪 Health & Sport</option>
+                            <option value="Personal">✨ Personal Growth</option>
+                            <option value="Pets">🐾 Pets</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small text-muted">Assign To</label>
+                        <select name="assigned_to" class="form-select bg-light">
+                            <option value="Both">👩‍❤️‍👨 Both</option>
+                            <option value="Me">👤 Me</option>
+                            <option value="Partner">💍 Partner</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small text-muted">Target Date</label>
+                        <input type="date" name="deadline" class="form-control bg-light">
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button class="btn btn-primary w-100" type="submit" style="height: 45px;">Add Goal</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <div class="row">
+            <div id="current-tasks-container" class="col-md-7 border-end pr-md-4">
+                <h4 class="mb-4 fw-bold">Current Tasks</h4>
+                <div id="current-tasks"></div>
+            </div>
+
+            <div id="accomplished-tasks-container" class="col-md-5 pl-md-4">
+                <h4 class="mb-4 fw-bold text-muted">Accomplished</h4>
+                <div id="accomplished-tasks"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const API_URL = 'http://localhost:5001/api';
+
+    document.addEventListener('DOMContentLoaded', () => {
+        if (!localStorage.getItem('token')) {
+            window.location.href = '/login';
+            return;
+        }
+
+        fetchTasks();
+
+        document.getElementById('add-task-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData.entries());
+
+            await fetch(`${API_URL}/tasks`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                credentials: 'include',
+                body: JSON.stringify(data)
+            });
+            fetchTasks();
+            e.target.reset();
+        });
+
+        document.getElementById('logout-btn').style.display = 'block';
+        document.getElementById('user-info').style.display = 'none';
+        document.getElementById('logout-btn').addEventListener('click', () => {
+            localStorage.removeItem('token');
+            fetch(`${API_URL}/logout`, { credentials: 'include' });
+            window.location.href = '/login';
+        });
+    });
+
+    async function fetchTasks() {
+        const response = await fetch(`${API_URL}/tasks`, { credentials: 'include' });
+        if (response.status === 401) {
+            localStorage.removeItem('token');
+            window.location.href = '/login';
+            return;
+        }
+        const tasks = await response.json();
+
+        const currentTasksContainer = document.getElementById('current-tasks');
+        const accomplishedTasksContainer = document.getElementById('accomplished-tasks');
+
+        currentTasksContainer.innerHTML = '';
+        accomplishedTasksContainer.innerHTML = '';
+
+        tasks.forEach(task => {
+            if (task.status !== 'Completed') {
+                currentTasksContainer.innerHTML += createTaskCard(task);
+            } else {
+                accomplishedTasksContainer.innerHTML += createAccomplishedTaskCard(task);
+            }
+        });
+    }
+
+    function createTaskCard(task) {
+        return `
+            <div class="card mb-3 shadow-sm p-3 ${task.status === 'In Progress' ? 'status-in-progress' : 'status-pending'}">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="mb-2">
+                            <span class="badge" style="background-color: #f0edff; color: #b2a4ff;">${task.category}</span>
+                            <span class="badge bg-light text-dark border ms-1">👤 ${task.assigned_to}</span>
+                        </div>
+                        <h5 class="mb-1 fw-bold">${task.content}</h5>
+                        <small class="text-muted">📅 ${task.deadline || 'No date set'}</small>
+                    </div>
+                    
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-light dropdown-toggle border-0 shadow-sm" type="button" data-bs-toggle="dropdown">
+                            ${task.status}
+                        </button>
+                        <ul class="dropdown-menu shadow border-0">
+                            <li><a class="dropdown-item py-2" href="#" onclick="updateTaskStatus(${task.id}, 'Pending')">⏳ Pending</a></li>
+                            <li><a class="dropdown-item py-2" href="#" onclick="updateTaskStatus(${task.id}, 'In Progress')">🚀 In Progress</a></li>
+                            <li><a class="dropdown-item py-2 text-success" href="#" onclick="updateTaskStatus(${task.id}, 'Completed')">✅ Done</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item py-2 text-danger" href="#" onclick="deleteTask(${task.id})">🗑️ Delete</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    function createAccomplishedTaskCard(task) {
+        return `
+            <div class="card mb-3 p-3 shadow-sm status-completed opacity-75">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div style="max-width: 75%;">
+                        <span class="text-decoration-line-through text-muted fw-bold">${task.content}</span>
+                        <br>
+                        <small class="badge bg-white text-success border mt-1">Completed by ${task.assigned_to} ✨</small>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <a href="#" onclick="updateTaskStatus(${task.id}, 'In Progress')" class="btn btn-sm text-secondary">↩️</a>
+                        <a href="#" onclick="deleteTask(${task.id})" class="btn btn-sm text-danger">✕</a>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    async function updateTaskStatus(taskId, newStatus) {
+        await fetch(`${API_URL}/tasks/${taskId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            credentials: 'include',
+            body: JSON.stringify({ status: newStatus })
+        });
+        fetchTasks();
+    }
+
+    async function deleteTask(taskId) {
+        await fetch(`${API_URL}/tasks/${taskId}`, {
+            method: 'DELETE',
+            credentials: 'include'
+        });
+        fetchTasks();
+    }
+</script>
+{% endblock %}

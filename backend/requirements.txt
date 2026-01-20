@@ -1,0 +1,9 @@
+Flask
+Flask-SQLAlchemy
+psycopg2-binary
+Flask-Login
+prometheus-flask-exporter
+python-json-logger
+Flask-Mail
+Flask-Cors
+gunicorn
