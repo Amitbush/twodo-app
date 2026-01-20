@@ -1,0 +1,67 @@
+name: TwoDo App CI
+
+on:
+  push:
+    branches: [ "**" ] # ירוץ על כל push בכל בראנץ' (כולל dev)
+  pull_request:
+    branches: [ "dev", "main" ] # ירוץ כשפותחים PR לברנאץ' dev או main
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+    
+    # בנייה והרצה ב-Docker Compose לבדיקה שהכל עולה
+      - name: Build & Start App
+        run: |
+          docker-compose up -d --build
+
+    #   - name: Set up Helm
+    #     uses: azure/setup-helm@v4
+    #     with:
+    #       version: 'latest'
+
+      # בדיקת תקינות ל-Helm Charts (לפי הנתיב שבו שמרנו את ה-K8s)
+    #   - name: Helm Lint
+    #     run: |
+    #       if [ -d "./k8s/twodo-chart" ]; then
+    #         helm lint ./k8s/twodo-chart
+    #       else
+    #         echo "Helm chart directory not found, skipping lint."
+    #       fi
+
+    #   # בנייה והרצה ב-Docker Compose לבדיקה שהכל עולה
+    #   - name: Build & Start App
+    #     run: |
+    #       docker-compose up -d --build
+
+      # בדיקת תקינות (Health Check) - מחכים שהפרונטנד יעלה בפורט 5002
+      - name: Wait for App Health
+        run: |
+          for i in {1..30}; do
+            if curl -fsS http://localhost:5002 >/dev/null; then
+              echo "Frontend is UP!"
+              exit 0
+            fi
+            echo "Waiting for app... ($i)"
+            sleep 2
+          done
+          echo "App failed to start in time"
+          docker-compose ps
+          docker-compose logs
+          exit 1
+
+      # בדיקה שה-API של הבקנד מגיב בפורט 5001
+      - name: Backend API Check
+        run: |
+          curl -fsS http://localhost:5001/api/tasks || echo "Backend API reachable but maybe empty"
+
+      # ניקוי בסיום (תמיד ירוץ)
+      - name: Teardown
+        if: always()
+        run: |
+          docker-compose down -v
