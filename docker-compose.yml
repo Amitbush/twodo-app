@@ -4,26 +4,38 @@ services:
     container_name: twodo_db_container
     restart: always
     environment:
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER:-user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
+      POSTGRES_DB: ${DB_NAME:-twodo_db}
     healthcheck:
-      # פקודה שבודקת אם ה-Postgres מוכן לקבל חיבורים
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-user} -d ${DB_NAME:-twodo_db}"]
       interval: 5s
       timeout: 5s
       retries: 5
     ports:
       - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
 
-  app:
-    build: .
-    container_name: twodo_app_container
+  backend:
+    build: ./backend
+    container_name: twodo_backend_container
     ports:
       - "5001:5001"
     environment:
-      - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
+      - DATABASE_URL=postgresql://${DB_USER:-user}:${DB_PASSWORD:-password}@db:5432/${DB_NAME:-twodo_db}
+      - SECRET_KEY=a-very-secret-key
     depends_on:
       db:
-        # כאן קורה הקסם: האפליקציה תחכה עד שה-DB יהיה במצב healthy
         condition: service_healthy
+
+  frontend:
+    build: ./frontend
+    container_name: twodo_frontend_container
+    ports:
+      - "5002:5000"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:

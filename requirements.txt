@@ -1,7 +1,0 @@
-flask
-flask-sqlalchemy
-psycopg2-binary
-flask-login
-prometheus-flask-exporter
-python-json-logger
-Flask-Mail
