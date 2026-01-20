@@ -27,6 +27,16 @@ jobs:
           # יצירת תג latest מקומי עבור ה-compose שירוץ מיד אחרי
           docker tag twodo-frontend:${{ env.IMAGE_TAG }} twodo-frontend:latest
           docker tag twodo-backend:${{ env.IMAGE_TAG }} twodo-backend:latest
+    # שמירת התג בקובץ טקסט
+      - name: Save Image Tag to file
+        run: echo "${{ env.IMAGE_TAG }}" > image_tag.txt
+
+    # העלאת הקובץ כ-Artifact לגיטהאב
+      - name: Upload Image Tag Artifact
+        uses: actions/upload-artifact@v4
+        with:
+            name: image-tag-artifact
+            path: image_tag.txt
 
       # בנייה והרצה ב-Docker Compose לבדיקה שהכל עולה
       - name: Build & Start App
