@@ -87,14 +87,6 @@
             fetchTasks();
             e.target.reset();
         });
-
-        document.getElementById('logout-btn').style.display = 'block';
-        document.getElementById('user-info').style.display = 'none';
-        document.getElementById('logout-btn').addEventListener('click', async () => {
-            await fetch(`${API_URL}/logout`, { credentials: 'include' });
-            localStorage.clear();
-            window.location.href = '/login';
-        });
     });
 
     async function fetchTasks() {

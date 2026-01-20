@@ -37,7 +37,7 @@
 
         if (response.ok) {
             localStorage.setItem('token', 'authenticated');
-            window.location.href = '/';
+            window.location.href = '/dashboard';
         } else {
             alert('Invalid username or password');
         }
