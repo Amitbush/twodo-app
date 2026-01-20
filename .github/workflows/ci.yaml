@@ -2,9 +2,9 @@ name: TwoDo App CI
 
 on:
   push:
-    branches: [ "**" ] # ירוץ על כל push בכל בראנץ' (כולל dev)
+    branches: [ "**" ]
   pull_request:
-    branches: [ "dev", "main" ] # ירוץ כשפותחים PR לברנאץ' dev או main
+    branches: [ "dev", "main" ]
 
 jobs:
   build-and-test:
@@ -24,26 +24,32 @@ jobs:
         run: |
           docker build ./frontend -t twodo-frontend:${{ env.IMAGE_TAG }}
           docker build ./backend -t twodo-backend:${{ env.IMAGE_TAG }}
-          # יצירת תג latest מקומי עבור ה-compose שירוץ מיד אחרי
           docker tag twodo-frontend:${{ env.IMAGE_TAG }} twodo-frontend:latest
           docker tag twodo-backend:${{ env.IMAGE_TAG }} twodo-backend:latest
-    # שמירת התג בקובץ טקסט
-      - name: Save Image Tag to file
-        run: echo "${{ env.IMAGE_TAG }}" > image_tag.txt
 
-    # העלאת הקובץ כ-Artifact לגיטהאב
+      # --- יצירת Artifact מפורט הכולל את ה-SHA256 של האימג'ים ---
+      - name: Generate Detailed Image Tags File
+        run: |
+          # שליפת ה-ID/Digest הייחודי של האימג'ים שנבנו הרגע
+          BACKEND_SHA=$(docker inspect --format='{{.Id}}' twodo-backend:${{ env.IMAGE_TAG }})
+          FRONTEND_SHA=$(docker inspect --format='{{.Id}}' twodo-frontend:${{ env.IMAGE_TAG }})
+          
+          # כתיבה לקובץ בפורמט המבוקש
+          echo "twodo-backend:${{ env.IMAGE_TAG }} $BACKEND_SHA" > image_tag.txt
+          echo "twodo-frontend:${{ env.IMAGE_TAG }} $FRONTEND_SHA" >> image_tag.txt
+
       - name: Upload Image Tag Artifact
         uses: actions/upload-artifact@v4
         with:
             name: image-tag-artifact
             path: image_tag.txt
 
-      # בנייה והרצה ב-Docker Compose לבדיקה שהכל עולה
+      # --- הרצה ובדיקות ב-Docker Compose ---
+
       - name: Build & Start App
         run: |
           docker compose up -d --build
 
-      # בדיקת תקינות (Health Check) - מחכים שהפרונטנד יעלה בפורט 5002
       - name: Wait for App Health
         run: |
           for i in {1..30}; do
@@ -59,12 +65,10 @@ jobs:
           docker compose logs
           exit 1
 
-      # בדיקה שה-API של הבקנד מגיב בפורט 5001
       - name: Backend API Check
         run: |
           curl -fsS http://localhost:5001/api/tasks || echo "Backend API reachable but maybe empty"
 
-      # ניקוי בסיום (תמיד ירוץ)
       - name: Teardown
         if: always()
         run: |
