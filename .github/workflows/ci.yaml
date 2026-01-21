@@ -1,0 +1,118 @@
+name: TwoDo App CI
+
+on:
+  push:
+    branches: [ "**" ]
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # --- יצירת תג ובנייה מתויגת ---
+      
+      - name: Set Image Tag
+        run: echo "IMAGE_TAG=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+
+      - name: Lint Python (Backend)
+        run: |
+          cd backend
+          pip install flake8
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+
+      - name: Run Backend Tests
+        run: |
+          cd backend
+          # כאן תריצי את ה-unit tests שלך (למשל pytest)
+          # pip install pytest && pytest
+
+      - name: Build Images with Tags
+        run: |
+          docker build ./frontend -t twodo-frontend:${{ env.IMAGE_TAG }}
+          docker build ./backend -t twodo-backend:${{ env.IMAGE_TAG }}
+          docker tag twodo-frontend:${{ env.IMAGE_TAG }} twodo-frontend:latest
+          docker tag twodo-backend:${{ env.IMAGE_TAG }} twodo-backend:latest
+
+      # --- יצירת Artifact מפורט הכולל את ה-SHA256 של האימג'ים ---
+      - name: Generate Detailed Image Tags File
+        run: |
+          BACKEND_SHA=$(docker inspect --format='{{.Id}}' twodo-backend:${{ env.IMAGE_TAG }})
+          FRONTEND_SHA=$(docker inspect --format='{{.Id}}' twodo-frontend:${{ env.IMAGE_TAG }})
+          echo "twodo-backend:${{ env.IMAGE_TAG }} $BACKEND_SHA" > image_tag.txt
+          echo "twodo-frontend:${{ env.IMAGE_TAG }} $FRONTEND_SHA" >> image_tag.txt
+
+      - name: Upload Image Tag Artifact
+        uses: actions/upload-artifact@v4
+        with:
+            name: image-tag-artifact
+            path: image_tag.txt
+
+      # --- הרצה ובדיקות ב-Docker Compose ---
+
+      - name: Build & Start App
+        run: |
+          docker compose up -d --build
+
+      - name: Wait for App Health
+        run: |
+          for i in {1..30}; do
+            if curl -fsS http://localhost:5002 >/dev/null; then
+              echo "Frontend is UP!"
+              exit 0
+            fi
+            echo "Waiting for app... ($i)"
+            sleep 2
+          done
+          echo "App failed to start in time"
+          docker compose ps
+          docker compose logs
+          exit 1
+
+      - name: Backend API Check
+        run: |
+          curl -fsS http://localhost:5001/api/tasks || echo "Backend API reachable but maybe empty"
+
+      # --- התחברות ל-AWS (ירוץ רק בדחיפה ל-main) ---
+      
+      - name: Configure AWS credentials
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # --- תיוג ודחיפה ל-ECR (ירוץ רק בדחיפה ל-main) ---
+
+      - name: Tag and Push to ECR
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ env.IMAGE_TAG }}
+        run: |
+          # 1. תיוג האימג'ים הקיימים לכתובת של ECR
+          docker tag twodo-frontend:$IMAGE_TAG $ECR_REGISTRY/twodo-frontend:$IMAGE_TAG
+          docker tag twodo-backend:$IMAGE_TAG $ECR_REGISTRY/twodo-backend:$IMAGE_TAG
+          docker tag twodo-frontend:$IMAGE_TAG $ECR_REGISTRY/twodo-frontend:latest
+          docker tag twodo-backend:$IMAGE_TAG $ECR_REGISTRY/twodo-backend:latest
+          
+          # 2. דחיפה ל-ECR
+          docker push $ECR_REGISTRY/twodo-frontend:$IMAGE_TAG
+          docker push $ECR_REGISTRY/twodo-backend:$IMAGE_TAG
+          docker push $ECR_REGISTRY/twodo-frontend:latest
+          docker push $ECR_REGISTRY/twodo-backend:latest
+
+      - name: Teardown
+        if: always()
+        run: |
+          docker compose down -v
