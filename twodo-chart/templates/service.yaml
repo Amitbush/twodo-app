@@ -2,6 +2,11 @@ apiVersion: v1
 kind: Service
 metadata:
   name: {{ .Values.frontend.name }}-service
+  annotations:
+    # הגדרות אלו מכוונות את ה-Controller להקים Network Load Balancer (NLB) ציבורי
+    service.beta.kubernetes.io/aws-load-balancer-type: "external"
+    service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: "instance"
+    service.beta.kubernetes.io/aws-load-balancer-scheme: "internet-facing"
 spec:
   type: {{ .Values.frontend.service.type }}
   ports:
