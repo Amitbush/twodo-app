@@ -18,3 +18,8 @@ ingress:
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}]'
+
+database:
+  name: postgres-db # השורה שחסרה לארגו
+  host: postgres-service
+  image: postgres:15-alpine
