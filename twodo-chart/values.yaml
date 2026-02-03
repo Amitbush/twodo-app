@@ -3,29 +3,27 @@ backend:
   name: twodo-backend
   replicaCount: 1
   image:
-    repository: twodo-backend
+    repository: twodo-backend # ודאי שזה תואם לשם ב-Docker Hub (למשל amitbush/twodo-backend)
     tag: latest
-    pullPolicy: Never
+    pullPolicy: Always
   service:
     type: ClusterIP
     port: 5001
-    targetPort: 5001 # תואם לפורט שה-Backend מאזין לו
-  database:
-    name: postgres-db
-    user: user
-    password: ""
-    host: postgres-service
 
 # הגדרות עבור ה-Frontend
 frontend:
   name: twodo-frontend
   replicaCount: 1
   image:
-    repository: twodo-frontend
+    repository: twodo-frontend # ודאי שזה תואם לשם ב-Docker Hub
     tag: latest
-    pullPolicy: Never
+    pullPolicy: Always
   service:
-    type: NodePort
-    port: 5002       # הפורט החיצוני של ה-Service בתוך הקלאסטר
-    targetPort: 5000 # חיוני: Flask אצלך רץ על 5000 לפי הלוגים
-    nodePort: 30002  # פורט קבוע לגישה נוחה ב-Minikube
+    type: LoadBalancer 
+    port: 5002       
+    targetPort: 5000 
+
+# הגדרות מסד נתונים (עבור ה-Service הפנימי בלבד)
+database:
+  host: postgres-service
+  name: postgres-db

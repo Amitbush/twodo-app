@@ -5,8 +5,7 @@ metadata:
 spec:
   type: {{ .Values.frontend.service.type }}
   ports:
-    - port: {{ .Values.frontend.service.port }} # נשאר 5002 לפי ה-Values שלך
-      targetPort: 5000 # שינינו ל-5000 כי זה הפורט שראינו ב-logs של Flask
-      nodePort: 30002
+    - port: {{ .Values.frontend.service.port }}
+      targetPort: {{ .Values.frontend.service.targetPort }}
   selector:
     app: {{ .Values.frontend.name }}

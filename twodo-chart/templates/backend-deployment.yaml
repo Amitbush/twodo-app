@@ -18,7 +18,7 @@ spec:
           imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
           ports:
             - containerPort: {{ .Values.backend.service.port }}
-          # --- השורות שהוספנו כדי לחבר למסד הנתונים ---
-          env:
-            - name: DATABASE_URL
-              value: "postgresql://{{ .Values.backend.database.user }}:{{ .Values.backend.database.password }}@{{ .Values.backend.database.host }}:5432/{{ .Values.backend.database.name }}"
+          # מושך אוטומטית DB_USER, DB_PASSWORD, DB_NAME וכו'
+          envFrom:
+            - secretRef:
+                name: twodo-secrets
