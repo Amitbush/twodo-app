@@ -16,9 +16,22 @@ spec:
         - name: frontend
           image: "{{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag }}"
           imagePullPolicy: {{ .Values.frontend.image.pullPolicy | default "Always" }}
+          # הפקודה המנצחת מה-Infra:
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              echo "Patching Frontend code..."
+              
+              # 1. החלפה של localhost ב- /api (בדיוק כמו ב-Infra)
+              find . -type f \( -name "*.js" -o -name "*.html" \) -exec sed -i 's|http://localhost:5001|/api|g' {} +
+              
+              # 2. ניקוי כפילויות (למקרה שהנתיב כבר תוקן)
+              find . -type f \( -name "*.js" -o -name "*.html" \) -exec sed -i 's|/api/api|/api|g' {} +
+              
+              echo "Patching complete. Starting Flask..."
+              python3 app.py
           ports:
-            - containerPort: 5000 # הפורט המקורי שהאימג' שלך מאזין לו
+            - containerPort: 5000 # הפורט שהקונטיינר מאזין לו (Flask)
           env:
             - name: REACT_APP_BACKEND_URL
-              # מושך את ה- /api מה-values.yaml ששלחת קודם
               value: {{ .Values.frontend.env.backendUrl | quote }}
