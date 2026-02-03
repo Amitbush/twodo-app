@@ -3,18 +3,20 @@ backend:
   name: twodo-backend
   replicaCount: 1
   image:
-    repository: twodo-backend
+    # החלפה לכתובת המלאה של ה-ECR
+    repository: 993412842562.dkr.ecr.us-east-1.amazonaws.com/twodo-backend
     tag: latest
     pullPolicy: Always
   service:
-    port: 5001 # זה הפורט שה-deployment ימשוך
+    port: 5001
 
 # הגדרות עבור ה-Frontend
 frontend:
   name: twodo-frontend
   replicaCount: 1
   image:
-    repository: twodo-frontend
+    # החלפה לכתובת המלאה של ה-ECR
+    repository: 993412842562.dkr.ecr.us-east-1.amazonaws.com/twodo-frontend
     tag: latest
     pullPolicy: Always
   service:
