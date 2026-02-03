@@ -3,19 +3,18 @@ backend:
   name: twodo-backend
   replicaCount: 1
   image:
-    repository: twodo-backend # ודאי שזה תואם לשם ב-Docker Hub (למשל amitbush/twodo-backend)
+    repository: twodo-backend
     tag: latest
     pullPolicy: Always
   service:
-    type: ClusterIP
-    port: 5001
+    port: 5001 # זה הפורט שה-deployment ימשוך
 
 # הגדרות עבור ה-Frontend
 frontend:
   name: twodo-frontend
   replicaCount: 1
   image:
-    repository: twodo-frontend # ודאי שזה תואם לשם ב-Docker Hub
+    repository: twodo-frontend
     tag: latest
     pullPolicy: Always
   service:
@@ -23,7 +22,7 @@ frontend:
     port: 5002       
     targetPort: 5000 
 
-# הגדרות מסד נתונים (עבור ה-Service הפנימי בלבד)
+# הגדרות מסד נתונים
 database:
   host: postgres-service
   name: postgres-db

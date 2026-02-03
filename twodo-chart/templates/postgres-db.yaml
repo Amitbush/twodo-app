@@ -16,18 +16,18 @@ spec:
           image: postgres:15
           env:
             - name: POSTGRES_DB
-              value: {{ .Values.backend.database.name }}
+              value: {{ .Values.database.name }}
             - name: POSTGRES_USER
-              value: {{ .Values.backend.database.user }}
+              value: "user" # הגדרנו סטטית כי זה DB פנימי, או שתוסיפי ל-Values
             - name: POSTGRES_PASSWORD
-              value: {{ .Values.backend.database.password }}
+              value: "password"
           ports:
             - containerPort: 5432
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ .Values.backend.database.host }}
+  name: {{ .Values.database.host }}
 spec:
   selector:
     app: postgres

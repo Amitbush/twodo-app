@@ -18,7 +18,6 @@ spec:
           imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
           ports:
             - containerPort: {{ .Values.backend.service.port }}
-          # מושך אוטומטית DB_USER, DB_PASSWORD, DB_NAME וכו'
           envFrom:
             - secretRef:
                 name: twodo-secrets
