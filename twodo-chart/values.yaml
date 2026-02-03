@@ -1,31 +1,15 @@
-# הגדרות עבור ה-Backend
 backend:
   name: twodo-backend
-  replicaCount: 1
-  image:
-    repository: 993412842562.dkr.ecr.us-east-1.amazonaws.com/twodo-backend
-    tag: latest
-    pullPolicy: Always
   service:
-    type: ClusterIP
     port: 5001
 
-# הגדרות עבור ה-Frontend
 frontend:
   name: twodo-frontend
-  replicaCount: 1
-  image:
-    repository: 993412842562.dkr.ecr.us-east-1.amazonaws.com/twodo-frontend
-    tag: latest
-    pullPolicy: Always
   env:
-    # פתרון קבוע: הדפדפן יפנה לאותו דומיין בנתיב /api
-    backendUrl: "/api"
+    backendUrl: "/api" # זה מה שיחליף את localhost
   service:
-    type: ClusterIP
-    port: 5000
+    port: 80
 
-# הגדרות Ingress - החיבור ל-ALB Controller מה-Infra
 ingress:
   enabled: true
   name: twodo-app-ingress
@@ -34,11 +18,3 @@ ingress:
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}]'
-    # חשוב: מאפשר ל-ALB לדעת שהאפליקציה בריאה
-    alb.ingress.kubernetes.io/healthcheck-path: /
-    alb.ingress.kubernetes.io/success-codes: '200-399'
-
-# הגדרות מסד נתונים
-database:
-  host: postgres-service
-  name: postgres-db

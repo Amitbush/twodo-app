@@ -4,9 +4,7 @@ kind: Ingress
 metadata:
   name: {{ .Values.ingress.name }}
   annotations:
-    {{- with .Values.ingress.annotations }}
-    {{- toYaml . | nindent 4 }}
-    {{- end }}
+    {{- toYaml .Values.ingress.annotations | nindent 4 }}
 spec:
   rules:
     - http:
@@ -24,5 +22,5 @@ spec:
               service:
                 name: {{ .Values.frontend.name }}-service
                 port:
-                  number: 80 # פה היה רשום לך 5000 בטעות וזה מה ששבר את ה-ALB
+                  number: 80
 {{- end }}

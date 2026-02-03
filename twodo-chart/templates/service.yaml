@@ -3,11 +3,9 @@ kind: Service
 metadata:
   name: {{ .Values.frontend.name }}-service
 spec:
-  # נשאר ClusterIP כפי שהחלטנו בפתרון הקבוע
   type: ClusterIP
   ports:
-    - port: 80 # הפורט שה-Ingress מחפש (כמו שהגדרנו בקובץ ה-Ingress)
-      targetPort: 5000 # הפורט שבו הקונטיינר מאזין (כמו שהגדרנו ב-Deployment)
-      protocol: TCP
+    - port: 80
+      targetPort: 5000
   selector:
     app: {{ .Values.frontend.name }}
