@@ -1,14 +1,28 @@
+frontend:
+  name: twodo-frontend
+  replicaCount: 1
+  image:
+    repository: 993412842562.dkr.ecr.us-east-1.amazonaws.com/twodo-frontend
+    tag: latest
+    pullPolicy: Always
+  env:
+    backendUrl: "/api"
+  service:
+    port: 80
+
 backend:
   name: twodo-backend
+  replicaCount: 1
+  image:
+    repository: 993412842562.dkr.ecr.us-east-1.amazonaws.com/twodo-backend
+    tag: latest
+    pullPolicy: Always
   service:
     port: 5001
 
-frontend:
-  name: twodo-frontend
-  env:
-    backendUrl: "/api" # זה מה שיחליף את localhost
-  service:
-    port: 80
+database:
+  name: postgres-db
+  host: postgres-service
 
 ingress:
   enabled: true
@@ -18,8 +32,3 @@ ingress:
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}]'
-
-database:
-  name: postgres-db # השורה שחסרה לארגו
-  host: postgres-service
-  image: postgres:15-alpine
