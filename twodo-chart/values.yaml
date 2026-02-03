@@ -7,7 +7,7 @@ backend:
     tag: latest
     pullPolicy: Always
   service:
-    type: ClusterIP # פנימי בלבד - ה-Ingress יחשוף אותו
+    type: ClusterIP
     port: 5001
 
 # הגדרות עבור ה-Frontend
@@ -19,13 +19,13 @@ frontend:
     tag: latest
     pullPolicy: Always
   env:
-    # פתרון הקבע: הפרונטנד פונה ל-/api באותו דומיין שבו הוא רץ
+    # פתרון קבוע: הדפדפן יפנה לאותו דומיין בנתיב /api
     backendUrl: "/api"
   service:
-    type: ClusterIP # פנימי בלבד
-    port: 5000 # הפורט הפנימי של האפליקציה (TargetPort)
+    type: ClusterIP
+    port: 5000
 
-# הגדרות Ingress - החיבור לתשתית ה-ALB מה-Infra
+# הגדרות Ingress - החיבור ל-ALB Controller מה-Infra
 ingress:
   enabled: true
   name: twodo-app-ingress
@@ -34,7 +34,7 @@ ingress:
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}]'
-    # מבטיח שה-ALB ידע לנתב נכון את הנתיבים
+    # חשוב: מאפשר ל-ALB לדעת שהאפליקציה בריאה
     alb.ingress.kubernetes.io/healthcheck-path: /
     alb.ingress.kubernetes.io/success-codes: '200-399'
 

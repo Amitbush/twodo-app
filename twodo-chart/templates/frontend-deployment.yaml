@@ -12,17 +12,19 @@ spec:
       labels:
         app: {{ .Values.frontend.name }}
     spec:
-      # הגדרת שטח אחסון זמני לשיתוף הקבצים המעודכנים בין הקונטיינרים
+      # הגדרת שטח אחסון זמני לשיתוף הקבצים המעודכנים
       volumes:
         - name: app-static
           emptyDir: {}
       
-      # זה ה"מנתח" - הוא רץ לפני שהאפליקציה עולה ומתקן את הקבצים
       initContainers:
         - name: env-injector
           image: busybox
-          # הפקודה מעתיקה את הקבצים המקוריים, ומחליפה את localhost בנתיב היחסי שנגדיר
-          command: ["sh", "-c", "cp -R /usr/share/nginx/html/* /tmp/static/ && grep -rl 'http://localhost:5001' /tmp/static | xargs sed -i 's|http://localhost:5001|'${REACT_APP_BACKEND_URL}'|g'"]
+          # הפקודה מבצעת 3 פעולות: 
+          # 1. העתקת הקבצים המקוריים מהאימג' לתיקייה הזמנית. 
+          # 2. חיפוש הכתובת localhost והחלפתה ב-/api (או מה שהגדרת ב-Values).
+          # 3. וידוא שהחלפה התבצעה בכל קבצי ה-JS.
+          command: ["sh", "-c", "cp -R /usr/share/nginx/html/* /tmp/static/ && find /tmp/static -type f -name '*.js' | xargs sed -i 's|http://localhost:5001|'${REACT_APP_BACKEND_URL}'|g'"]
           env:
             - name: REACT_APP_BACKEND_URL
               value: {{ .Values.frontend.env.backendUrl | quote }}
@@ -35,8 +37,8 @@ spec:
           image: "{{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag }}"
           imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
           ports:
-            - containerPort: 5000
-          # טעינת הקבצים ה"מתוקנים" במקום המקוריים
+            - containerPort: 80 # רוב האימג'ים של Nginx/React עובדים ב-80. ודאי שזה תואם לאימג' שלך.
+          # טעינת הקבצים ה"מתוקנים" מה-Init Container
           volumeMounts:
             - name: app-static
               mountPath: /usr/share/nginx/html

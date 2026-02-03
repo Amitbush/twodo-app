@@ -11,6 +11,7 @@ spec:
   rules:
     - http:
         paths:
+          # ניתוב לבקאנד - נשאר 5001 כמו ב-Infra
           - path: /api
             pathType: Prefix
             backend:
@@ -18,11 +19,12 @@ spec:
                 name: {{ .Values.backend.name }}-service
                 port:
                   number: 5001
+          # ניתוב לפרונטנד - שינינו לפורט 80 כדי להתאים ל-Nginx/Deployment
           - path: /
             pathType: Prefix
             backend:
               service:
                 name: {{ .Values.frontend.name }}-service
                 port:
-                  number: 5000
+                  number: 80
 {{- end }}
