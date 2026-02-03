@@ -3,11 +3,11 @@ backend:
   name: twodo-backend
   replicaCount: 1
   image:
-    # החלפה לכתובת המלאה של ה-ECR
     repository: 993412842562.dkr.ecr.us-east-1.amazonaws.com/twodo-backend
     tag: latest
     pullPolicy: Always
   service:
+    type: ClusterIP # פנימי בלבד - ה-Ingress יחשוף אותו
     port: 5001
 
 # הגדרות עבור ה-Frontend
@@ -15,14 +15,28 @@ frontend:
   name: twodo-frontend
   replicaCount: 1
   image:
-    # החלפה לכתובת המלאה של ה-ECR
     repository: 993412842562.dkr.ecr.us-east-1.amazonaws.com/twodo-frontend
     tag: latest
     pullPolicy: Always
+  env:
+    # פתרון הקבע: הפרונטנד פונה ל-/api באותו דומיין שבו הוא רץ
+    backendUrl: "/api"
   service:
-    type: LoadBalancer 
-    port: 5002       
-    targetPort: 5000 
+    type: ClusterIP # פנימי בלבד
+    port: 5000 # הפורט הפנימי של האפליקציה (TargetPort)
+
+# הגדרות Ingress - החיבור לתשתית ה-ALB מה-Infra
+ingress:
+  enabled: true
+  name: twodo-app-ingress
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}]'
+    # מבטיח שה-ALB ידע לנתב נכון את הנתיבים
+    alb.ingress.kubernetes.io/healthcheck-path: /
+    alb.ingress.kubernetes.io/success-codes: '200-399'
 
 # הגדרות מסד נתונים
 database:

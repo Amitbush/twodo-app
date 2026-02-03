@@ -18,3 +18,8 @@ spec:
           imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
           ports:
             - containerPort: 5000
+          # זה החלק הקריטי שמונע את שגיאת ה-localhost ב-Console
+          env:
+            - name: REACT_APP_BACKEND_URL
+              # אנחנו מושכים את הערך שהגדרנו ב-values.yaml
+              value: {{ .Values.frontend.env.backendUrl | quote }}
