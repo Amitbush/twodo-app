@@ -18,7 +18,8 @@ spec:
       initContainers:
         - name: env-injector
           image: busybox
-          command: ["sh", "-c", "cp -R /usr/share/nginx/html/* /tmp/static/ && find /tmp/static -type f -name '*.js' | xargs sed -i 's|http://localhost:5001|'${REACT_APP_BACKEND_URL}'|g'"]
+          # פקודה משופרת: בודקת איפה הקבצים נמצאים לפני שהיא רצה
+          command: ["sh", "-c", "SOURCE_DIR='/usr/share/nginx/html'; if [ -d \"$SOURCE_DIR\" ]; then cp -R $SOURCE_DIR/* /tmp/static/; fi; find /tmp/static -type f -name '*.js' | xargs sed -i 's|http://localhost:5001|'${REACT_APP_BACKEND_URL}'|g' || true"]
           env:
             - name: REACT_APP_BACKEND_URL
               value: {{ .Values.frontend.env.backendUrl | quote }}
