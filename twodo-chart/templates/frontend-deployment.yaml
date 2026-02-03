@@ -37,7 +37,7 @@ spec:
           image: "{{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag }}"
           imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
           ports:
-            - containerPort: 80 # רוב האימג'ים של Nginx/React עובדים ב-80. ודאי שזה תואם לאימג' שלך.
+            - containerPort: 5000 # רוב האימג'ים של Nginx/React עובדים ב-80. ודאי שזה תואם לאימג' שלך.
           # טעינת הקבצים ה"מתוקנים" מה-Init Container
           volumeMounts:
             - name: app-static
