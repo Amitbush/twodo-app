@@ -18,6 +18,14 @@ spec:
           imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
           ports:
             - containerPort: {{ .Values.backend.service.port }}
+          env:
+            # כאן אנחנו בונים את הכתובת ל-DB בעזרת המפתחות המדויקים מהסיקרט שלך
+            - name: DATABASE_URL
+              value: "postgresql://$(db-user):$(db-password)@{{ .Values.database.host }}:5432/{{ .Values.database.name }}"
+            - name: DB_HOST
+              value: "{{ .Values.database.host }}"
+            - name: DB_NAME
+              value: "{{ .Values.database.name }}"
           envFrom:
             - secretRef:
                 name: twodo-secrets
