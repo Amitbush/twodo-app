@@ -6,6 +6,7 @@ frontend:
     tag: latest
     pullPolicy: Always
   env:
+    # זה המשתנה הקריטי שיחליף את ה-localhost
     backendUrl: "/api"
   service:
     port: 80
@@ -23,6 +24,9 @@ backend:
 database:
   name: postgres-db
   host: postgres-service
+  image: postgres:15-alpine # הוספתי כדי למנוע שגיאות ב-Template
+  user: postgres
+  password: password
 
 ingress:
   enabled: true

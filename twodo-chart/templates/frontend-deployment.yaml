@@ -12,25 +12,13 @@ spec:
       labels:
         app: {{ .Values.frontend.name }}
     spec:
-      volumes:
-        - name: app-static
-          emptyDir: {}
-      initContainers:
-        - name: env-injector
-          image: busybox
-          # פקודה משופרת: בודקת איפה הקבצים נמצאים לפני שהיא רצה
-          command: ["sh", "-c", "SOURCE_DIR='/usr/share/nginx/html'; if [ -d \"$SOURCE_DIR\" ]; then cp -R $SOURCE_DIR/* /tmp/static/; fi; find /tmp/static -type f -name '*.js' | xargs sed -i 's|http://localhost:5001|'${REACT_APP_BACKEND_URL}'|g' || true"]
-          env:
-            - name: REACT_APP_BACKEND_URL
-              value: {{ .Values.frontend.env.backendUrl | quote }}
-          volumeMounts:
-            - name: app-static
-              mountPath: /tmp/static
       containers:
         - name: frontend
           image: "{{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag }}"
+          imagePullPolicy: {{ .Values.frontend.image.pullPolicy | default "Always" }}
           ports:
-            - containerPort: 5000
-          volumeMounts:
-            - name: app-static
-              mountPath: /usr/share/nginx/html
+            - containerPort: 5000 # הפורט המקורי שהאימג' שלך מאזין לו
+          env:
+            - name: REACT_APP_BACKEND_URL
+              # מושך את ה- /api מה-values.yaml ששלחת קודם
+              value: {{ .Values.frontend.env.backendUrl | quote }}
