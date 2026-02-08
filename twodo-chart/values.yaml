@@ -35,4 +35,17 @@ ingress:
     kubernetes.io/ingress.class: alb
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
-    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}]'
+    # פתיחת פורטים 80 ו-443
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS":443}]'
+    # הפניה אוטומטית מ-HTTP ל-HTTPS
+    alb.ingress.kubernetes.io/ssl-redirect: '443'
+    
+    # --- הפתרון המנצח: גילוי אוטומטי של התעודה לפי שם הדומיין ---
+    # ה-Controller יחפש ב-ACM תעודה שתואמת ל-host שמוגדר למטה
+    alb.ingress.kubernetes.io/certificate-arn: "" 
+    
+  hosts:
+    - host: twodo-app.org
+      paths:
+        - path: /
+          pathType: Prefix
