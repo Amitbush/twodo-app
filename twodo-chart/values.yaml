@@ -39,6 +39,7 @@ ingress:
     alb.ingress.kubernetes.io/ssl-redirect: '443'
     alb.ingress.kubernetes.io/certificate-arn: "" 
     alb.ingress.kubernetes.io/group.name: "twodo-app-stack"
+    alb.ingress.kubernetes.io/certificate-domain-name: "twodo-app.org"
   hosts:
     - host: twodo-app.org
       paths:
