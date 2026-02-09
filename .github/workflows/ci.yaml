@@ -1,62 +1,31 @@
-name: TwoDo App CI
+name: TwoDo App CI/CD
 
 on:
   push:
     branches: [ "**" ]
   pull_request:
 
-jobs:
-  build-and-test:
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
+permissions:
+  id-token: write
+  contents: write
 
+jobs:
+  # --- ג'וב 1: בדיקות (Test) ---
+  # רץ על כל Push בכל בראנץ' כדי לוודא שלא שברנו כלום
+  test:
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # --- יצירת תג ובנייה מתויגת ---
-      
-      - name: Set Image Tag
-        run: echo "IMAGE_TAG=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
-
-      - name: Lint Python (Backend)
+      - name: Lint Python
         run: |
           cd backend
           pip install flake8
           flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
 
-      - name: Run Backend Tests
-        run: |
-          cd backend
-          # כאן תריצי את ה-unit tests שלך (למשל pytest)
-          # pip install pytest && pytest
-
-      - name: Build Images with Tags
-        run: |
-          docker build ./frontend -t twodo-frontend:${{ env.IMAGE_TAG }}
-          docker build ./backend -t twodo-backend:${{ env.IMAGE_TAG }}
-          docker tag twodo-frontend:${{ env.IMAGE_TAG }} twodo-frontend:latest
-          docker tag twodo-backend:${{ env.IMAGE_TAG }} twodo-backend:latest
-
-      # --- יצירת Artifact מפורט הכולל את ה-SHA256 של האימג'ים ---
-      - name: Generate Detailed Image Tags File
-        run: |
-          BACKEND_SHA=$(docker inspect --format='{{.Id}}' twodo-backend:${{ env.IMAGE_TAG }})
-          FRONTEND_SHA=$(docker inspect --format='{{.Id}}' twodo-frontend:${{ env.IMAGE_TAG }})
-          echo "twodo-backend:${{ env.IMAGE_TAG }} $BACKEND_SHA" > image_tag.txt
-          echo "twodo-frontend:${{ env.IMAGE_TAG }} $FRONTEND_SHA" >> image_tag.txt
-
-      - name: Upload Image Tag Artifact
-        uses: actions/upload-artifact@v4
-        with:
-            name: image-tag-artifact
-            path: image_tag.txt
-
-      # --- הרצה ובדיקות ב-Docker Compose ---
-
-      - name: Build & Start App
-        run: |
-          docker compose up -d --build
+      - name: Build & Start App (Integration Test)
+        run: docker compose up -d --build
 
       - name: Wait for App Health
         run: |
@@ -68,51 +37,73 @@ jobs:
             echo "Waiting for app... ($i)"
             sleep 2
           done
-          echo "App failed to start in time"
-          docker compose ps
-          docker compose logs
           exit 1
 
-      - name: Backend API Check
-        run: |
-          curl -fsS http://localhost:5001/api/tasks || echo "Backend API reachable but maybe empty"
+      - name: Teardown
+        if: always()
+        run: docker compose down -v
 
-      # --- התחברות ל-AWS (ירוץ רק בדחיפה ל-main) ---
-      
-      - name: Configure AWS credentials
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+  # --- ג'וב 2: בנייה ודחיפה (Build & Push) ---
+  # רץ רק אם הטסטים עברו ורק בבראנץ' main
+  build-and-push:
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ steps.set-tag.outputs.tag }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set Image Tag
+        id: set-tag
+        run: |
+          TAG=$(git rev-parse --short HEAD)
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "IMAGE_TAG=$TAG" >> $GITHUB_ENV
+
+      - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
+          role-to-assume: arn:aws:iam::993412842562:role/github-actions-ecr-role
+          aws-region: us-east-1
 
       - name: Login to Amazon ECR
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      # --- תיוג ודחיפה ל-ECR (ירוץ רק בדחיפה ל-main) ---
-
-      - name: Tag and Push to ECR
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      - name: Build and Push to ECR
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ env.IMAGE_TAG }}
         run: |
-          # 1. תיוג האימג'ים הקיימים לכתובת של ECR
-          docker tag twodo-frontend:$IMAGE_TAG $ECR_REGISTRY/twodo-frontend:$IMAGE_TAG
-          docker tag twodo-backend:$IMAGE_TAG $ECR_REGISTRY/twodo-backend:$IMAGE_TAG
-          docker tag twodo-frontend:$IMAGE_TAG $ECR_REGISTRY/twodo-frontend:latest
-          docker tag twodo-backend:$IMAGE_TAG $ECR_REGISTRY/twodo-backend:latest
-          
-          # 2. דחיפה ל-ECR
+          docker build ./frontend -t $ECR_REGISTRY/twodo-frontend:$IMAGE_TAG -t $ECR_REGISTRY/twodo-frontend:latest
+          docker build ./backend -t $ECR_REGISTRY/twodo-backend:$IMAGE_TAG -t $ECR_REGISTRY/twodo-backend:latest
           docker push $ECR_REGISTRY/twodo-frontend:$IMAGE_TAG
           docker push $ECR_REGISTRY/twodo-backend:$IMAGE_TAG
           docker push $ECR_REGISTRY/twodo-frontend:latest
           docker push $ECR_REGISTRY/twodo-backend:latest
 
-      - name: Teardown
-        if: always()
+  # --- ג'וב 3: פריסה (Deploy) ---
+  # רץ רק אם הבנייה הצליחה
+  deploy:
+    needs: build-and-push
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update GitOps Repository
+        env:
+          GITOPS_PAT: ${{ secrets.GITOPS_PAT }}
+          IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
         run: |
-          docker compose down -v
+          git config --global user.email "github-actions@github.com"
+          git config --global user.name "GitHub Actions"
+          git clone https://x-access-token:${GITOPS_PAT}@github.com/Amitbush/twodo-app-gitops.git
+          cd twodo-app-gitops
+          
+          # עדכון הטאג החדש
+          sed -i "s/tag: .*/tag: \"${IMAGE_TAG}\"/g" staging/values.yaml
+          
+          git add .
+          git commit -m "Deploy version ${IMAGE_TAG} [skip ci]"
+          git push origin main
