@@ -2,82 +2,106 @@ name: TwoDo App CI/CD
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "**" ]
   pull_request:
 
-# דרישת חובה עבור OIDC: הרשאות כתיבה ל-ID Token
 permissions:
   id-token: write
-  contents: write # נדרש כדי שנוכל לעשות Push לריפו של ה-GitOps
+  contents: write
 
 jobs:
-  # ג'וב 1: בדיקות ואיכות קוד
+  # --- ג'וב 1: בדיקות (Test) ---
+  # רץ על כל Push בכל בראנץ' כדי לוודא שלא שברנו כלום
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Set Image Tag
-        run: echo "IMAGE_TAG=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
-        
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
       - name: Lint Python
         run: |
           cd backend
           pip install flake8
           flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
 
-  # ג'וב 2: בנייה ודחיפה ל-ECR (תלוי בהצלחת ה-Test)
+      - name: Build & Start App (Integration Test)
+        run: docker compose up -d --build
+
+      - name: Wait for App Health
+        run: |
+          for i in {1..30}; do
+            if curl -fsS http://localhost:5002 >/dev/null; then
+              echo "Frontend is UP!"
+              exit 0
+            fi
+            echo "Waiting for app... ($i)"
+            sleep 2
+          done
+          exit 1
+
+      - name: Teardown
+        if: always()
+        run: docker compose down -v
+
+  # --- ג'וב 2: בנייה ודחיפה (Build & Push) ---
+  # רץ רק אם הטסטים עברו ורק בבראנץ' main
   build-and-push:
     needs: test
-    runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
     outputs:
       image_tag: ${{ steps.set-tag.outputs.tag }}
     steps:
-      - uses: actions/checkout@v4
-      
-      - id: set-tag
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set Image Tag
+        id: set-tag
         run: |
           TAG=$(git rev-parse --short HEAD)
           echo "tag=$TAG" >> $GITHUB_OUTPUT
           echo "IMAGE_TAG=$TAG" >> $GITHUB_ENV
 
-      # התחברות ל-AWS באמצעות OIDC (בלי Secrets של מפתחות!)
-      - name: Configure AWS credentials
+      - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::993412842562:role/github-actions-ecr-role 
+          role-to-assume: arn:aws:iam::993412842562:role/github-actions-ecr-role
           aws-region: us-east-1
 
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build and Push
+      - name: Build and Push to ECR
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ env.IMAGE_TAG }}
         run: |
-          docker build ./frontend -t $ECR_REGISTRY/twodo-frontend:$IMAGE_TAG
-          docker build ./backend -t $ECR_REGISTRY/twodo-backend:$IMAGE_TAG
+          docker build ./frontend -t $ECR_REGISTRY/twodo-frontend:$IMAGE_TAG -t $ECR_REGISTRY/twodo-frontend:latest
+          docker build ./backend -t $ECR_REGISTRY/twodo-backend:$IMAGE_TAG -t $ECR_REGISTRY/twodo-backend:latest
           docker push $ECR_REGISTRY/twodo-frontend:$IMAGE_TAG
           docker push $ECR_REGISTRY/twodo-backend:$IMAGE_TAG
+          docker push $ECR_REGISTRY/twodo-frontend:latest
+          docker push $ECR_REGISTRY/twodo-backend:latest
 
-  # ג'וב 3: עדכון ה-GitOps (תלוי בהצלחת ה-Build)
+  # --- ג'וב 3: פריסה (Deploy) ---
+  # רץ רק אם הבנייה הצליחה
   deploy:
     needs: build-and-push
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
-      - name: Update GitOps Repo
+      - name: Update GitOps Repository
         env:
           GITOPS_PAT: ${{ secrets.GITOPS_PAT }}
           IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
         run: |
           git config --global user.email "github-actions@github.com"
           git config --global user.name "GitHub Actions"
-          
           git clone https://x-access-token:${GITOPS_PAT}@github.com/Amitbush/twodo-app-gitops.git
           cd twodo-app-gitops
           
+          # עדכון הטאג החדש
           sed -i "s/tag: .*/tag: \"${IMAGE_TAG}\"/g" staging/values.yaml
           
           git add .
