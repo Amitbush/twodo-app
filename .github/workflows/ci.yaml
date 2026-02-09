@@ -98,11 +98,14 @@ jobs:
         run: |
           git config --global user.email "github-actions@github.com"
           git config --global user.name "GitHub Actions"
+          
           git clone https://x-access-token:${GITOPS_PAT}@github.com/Amitbush/twodo-app-gitops.git
           cd twodo-app-gitops
           
-          # עדכון הטאג החדש
-          sed -i "s/tag: .*/tag: \"${IMAGE_TAG}\"/g" staging/values.yaml
+          # פקודה שמעדכנת את הטאג בתוך הקובץ הספציפי שלך
+          # היא מחפשת את השורה שמכילה את האימג' ומחליפה את מה שבא אחרי הנקודתיים בטאג החדש
+          sed -i "s|twodo-frontend:.*|twodo-frontend:${IMAGE_TAG}|g" apps/twodo-application.yaml
+          sed -i "s|twodo-backend:.*|twodo-backend:${IMAGE_TAG}|g" apps/twodo-application.yaml
           
           git add .
           git commit -m "Deploy version ${IMAGE_TAG} [skip ci]"
