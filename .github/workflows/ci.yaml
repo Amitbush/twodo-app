@@ -10,8 +10,6 @@ permissions:
   contents: write
 
 jobs:
-  # --- ג'וב 1: בדיקות (Test) ---
-  # רץ על כל Push בכל בראנץ' כדי לוודא שלא שברנו כלום
   test:
     runs-on: ubuntu-latest
     steps:
@@ -43,8 +41,6 @@ jobs:
         if: always()
         run: docker compose down -v
 
-  # --- ג'וב 2: בנייה ודחיפה (Build & Push) ---
-  # רץ רק אם הטסטים עברו ורק בבראנץ' main
   build-and-push:
     needs: test
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -61,6 +57,18 @@ jobs:
           TAG=$(git rev-parse --short HEAD)
           echo "tag=$TAG" >> $GITHUB_OUTPUT
           echo "IMAGE_TAG=$TAG" >> $GITHUB_ENV
+
+      # --- יצירת הארטיפקט (כפי שהיה לך קודם) ---
+      - name: Generate Detailed Image Tags File
+        run: |
+          echo "twodo-backend:${{ env.IMAGE_TAG }}" > image_tag.txt
+          echo "twodo-frontend:${{ env.IMAGE_TAG }}" >> image_tag.txt
+
+      - name: Upload Image Tag Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: image-tag-artifact
+          path: image_tag.txt
 
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
@@ -84,8 +92,6 @@ jobs:
           docker push $ECR_REGISTRY/twodo-frontend:latest
           docker push $ECR_REGISTRY/twodo-backend:latest
 
-  # --- ג'וב 3: פריסה (Deploy) ---
-  # רץ רק אם הבנייה הצליחה
   deploy:
     needs: build-and-push
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -102,11 +108,13 @@ jobs:
           git clone https://x-access-token:${GITOPS_PAT}@github.com/Amitbush/twodo-app-gitops.git
           cd twodo-app-gitops
           
-          # פקודה שמעדכנת את הטאג בתוך הקובץ הספציפי שלך
-          # היא מחפשת את השורה שמכילה את האימג' ומחליפה את מה שבא אחרי הנקודתיים בטאג החדש
-          sed -i "s|twodo-frontend:.*|twodo-frontend:${IMAGE_TAG}|g" apps/twodo-application.yaml
-          sed -i "s|twodo-backend:.*|twodo-backend:${IMAGE_TAG}|g" apps/twodo-application.yaml
+          sed -i "s|image: .*/twodo-frontend:.*|image: 993412842562.dkr.ecr.us-east-1.amazonaws.com/twodo-frontend:${IMAGE_TAG}|g" apps/twodo-application.yaml
+          sed -i "s|image: .*/twodo-backend:.*|image: 993412842562.dkr.ecr.us-east-1.amazonaws.com/twodo-backend:${IMAGE_TAG}|g" apps/twodo-application.yaml
           
-          git add .
-          git commit -m "Deploy version ${IMAGE_TAG} [skip ci]"
-          git push origin main
+          if [ -n "$(git status --porcelain)" ]; then
+            git add .
+            git commit -m "Deploy version ${IMAGE_TAG} [skip ci]"
+            git push origin main
+          else
+            echo "No changes to commit. Image tag is already up to date."
+          fi
