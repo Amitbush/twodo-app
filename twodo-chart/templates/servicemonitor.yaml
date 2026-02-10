@@ -1,0 +1,19 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "twodo-chart.fullname" . }}-backend-monitor
+  labels:
+    release: prometheus-stack
+    {{- include "twodo-chart.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "twodo-chart.selectorLabels" . | nindent 6 }}
+      app: twodo-backend  # ודאי שזה הלייבל ב-service.yaml שלך
+  namespaceSelector:
+    matchNames:
+      - {{ .Release.Namespace }}
+  endpoints:
+  - port: http
+    path: /metrics
+    interval: 30s
