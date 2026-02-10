@@ -5,16 +5,19 @@ metadata:
   name: {{ .Values.ingress.name }}
   annotations:
     {{- toYaml .Values.ingress.annotations | nindent 4 }}
-    # האנוטציה הזו קריטית כדי שה-ALB יוכל לגשת לשירותים ב-Namespaces אחרים
-    alb.ingress.kubernetes.io/target-group-attributes: stickiness.enabled=true
+    # מאפשר ל-ALB לנהל כמה דומיינים על אותו Load Balancer פיזי
+    alb.ingress.kubernetes.io/group.name: "twodo-app-stack"
+    # קריטי לניתוב לשירותים ב-Namespaces אחרים
     alb.ingress.kubernetes.io/target-type: ip
+    # אופציונלי: עוזר לשמור על חיבור יציב בארגו וגרפאנה
+    alb.ingress.kubernetes.io/target-group-attributes: stickiness.enabled=true,stickiness.lb_cookie.duration_seconds=3600
 spec:
   rules:
     {{- range .Values.ingress.hosts }}
     - host: {{ .host | quote }}
       http:
         paths:
-          {{- /* ניתוב לגרפאנה */ -}}
+          {{- /* ניתוב לגרפאנה (נמצא ב-Namespace: monitoring) */ -}}
           {{- if contains "grafana" .host }}
           - path: /
             pathType: Prefix
@@ -23,7 +26,7 @@ spec:
                 name: prometheus-stack-grafana
                 port:
                   number: 80
-          {{- /* ניתוב לארגו */ -}}
+          {{- /* ניתוב לארגו (נמצא ב-Namespace: argocd) */ -}}
           {{- else if contains "argocd" .host }}
           - path: /
             pathType: Prefix
@@ -32,7 +35,7 @@ spec:
                 name: argocd-server
                 port:
                   number: 80
-          {{- /* ניתוב רגיל לאתר (Backend/Frontend) */ -}}
+          {{- /* ניתוב רגיל לאפליקציה (Frontend/Backend) */ -}}
           {{- else }}
           - path: /api
             pathType: Prefix

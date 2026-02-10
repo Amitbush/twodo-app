@@ -46,5 +46,11 @@ ingress:
       paths:
         - path: /
           pathType: Prefix
-    - host: "grafana.twodo-app.org" # גרפאנה
-    - host: "argocd.twodo-app.org" # ארגו
+    - host: grafana.twodo-app.org
+      paths:
+        - path: /
+          pathType: Prefix
+    - host: argocd.twodo-app.org
+      paths:
+        - path: /
+          pathType: Prefix
