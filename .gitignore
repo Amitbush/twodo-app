@@ -3,18 +3,13 @@ __pycache__/
 *.py[cod]
 *$py.class
 venv/
-.env
-
 # Databases
 *.db
 *.sqlite3
-
 # OS
 .DS_Store
-
+Thumbs.db
 .env
-
-k8s/*.yaml
-
 # Helm secrets
 twodo-chart/secrets.yaml
+cookies.txt
