@@ -17,25 +17,22 @@ spec:
     - host: {{ .host | quote }}
       http:
         paths:
-          {{- /* ניתוב לגרפאנה (נמצא ב-Namespace: monitoring) */ -}}
           {{- if contains "grafana" .host }}
           - path: /
             pathType: Prefix
             backend:
               service:
-                name: prometheus-stack-grafana
+                name: grafana-external
                 port:
                   number: 80
-          {{- /* ניתוב לארגו (נמצא ב-Namespace: argocd) */ -}}
           {{- else if contains "argocd" .host }}
           - path: /
             pathType: Prefix
             backend:
               service:
-                name: argocd-server
+                name: argocd-external
                 port:
                   number: 80
-          {{- /* ניתוב רגיל לאפליקציה (Frontend/Backend) */ -}}
           {{- else }}
           - path: /api
             pathType: Prefix
