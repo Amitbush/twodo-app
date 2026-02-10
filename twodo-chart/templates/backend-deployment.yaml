@@ -19,13 +19,24 @@ spec:
           ports:
             - containerPort: {{ .Values.backend.service.port }}
           env:
-            # כאן אנחנו בונים את הכתובת ל-DB בעזרת המפתחות המדויקים מהסיקרט שלך
+            # כאן הקסם קורה: אנחנו לוקחים את ה-URL המלא שטרפורם בנה ב-Secret
             - name: DATABASE_URL
-              value: "postgresql://$(db-user):$(db-password)@{{ .Values.database.host }}:5432/{{ .Values.database.name }}"
-            - name: DB_HOST
-              value: "{{ .Values.database.host }}"
-            - name: DB_NAME
-              value: "{{ .Values.database.name }}"
+              valueFrom:
+                secretKeyRef:
+                  name: twodo-secrets
+                  key: db-url
+            # משתנים נוספים שהאפליקציה עשויה להזדקק להם
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: twodo-secrets
+                  key: db-user
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: twodo-secrets
+                  key: db-password
+          # טוען את כל שאר הערכים מהסיקרט כמשתני סביבה (כמו api-url וכו')
           envFrom:
             - secretRef:
                 name: twodo-secrets
