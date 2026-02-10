@@ -5,12 +5,35 @@ metadata:
   name: {{ .Values.ingress.name }}
   annotations:
     {{- toYaml .Values.ingress.annotations | nindent 4 }}
+    # האנוטציה הזו קריטית כדי שה-ALB יוכל לגשת לשירותים ב-Namespaces אחרים
+    alb.ingress.kubernetes.io/target-group-attributes: stickiness.enabled=true
+    alb.ingress.kubernetes.io/target-type: ip
 spec:
   rules:
     {{- range .Values.ingress.hosts }}
     - host: {{ .host | quote }}
       http:
         paths:
+          {{- /* ניתוב לגרפאנה */ -}}
+          {{- if contains "grafana" .host }}
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: prometheus-stack-grafana
+                port:
+                  number: 80
+          {{- /* ניתוב לארגו */ -}}
+          {{- else if contains "argocd" .host }}
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: argocd-server
+                port:
+                  number: 80
+          {{- /* ניתוב רגיל לאתר (Backend/Frontend) */ -}}
+          {{- else }}
           - path: /api
             pathType: Prefix
             backend:
@@ -25,5 +48,6 @@ spec:
                 name: {{ $.Values.frontend.name }}-service
                 port:
                   number: 80
+          {{- end }}
     {{- end }}
 {{- end }}
