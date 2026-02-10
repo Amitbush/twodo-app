@@ -7,4 +7,3 @@ python-json-logger
 Flask-Mail
 Flask-Cors
 gunicorn
-prometheus-flask-exporter
