@@ -1,53 +1,29 @@
-{{- if .Values.ingress.enabled -}}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ .Values.ingress.name }}
+  name: twodo-app-ingress
+  namespace: default
   annotations:
-    {{- toYaml .Values.ingress.annotations | nindent 4 }}
-    # מאפשר ל-ALB לנהל כמה דומיינים על אותו Load Balancer פיזי
-    alb.ingress.kubernetes.io/group.name: "twodo-app-stack"
-    # קריטי לניתוב לשירותים ב-Namespaces אחרים
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
-    # אופציונלי: עוזר לשמור על חיבור יציב בארגו וגרפאנה
-    alb.ingress.kubernetes.io/target-group-attributes: stickiness.enabled=true,stickiness.lb_cookie.duration_seconds=3600
+    alb.ingress.kubernetes.io/group.name: "twodo-app-stack" # מאחד את כולם לאותו LB
 spec:
   rules:
-    {{- range .Values.ingress.hosts }}
-    - host: {{ .host | quote }}
+    - host: "twodo-app.org"
       http:
         paths:
-          {{- if contains "grafana" .host }}
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: grafana-external
-                port:
-                  number: 80
-          {{- else if contains "argocd" .host }}
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: argocd-external
-                port:
-                  number: 80
-          {{- else }}
           - path: /api
             pathType: Prefix
             backend:
               service:
-                name: {{ $.Values.backend.name }}-service
+                name: {{ .Values.backend.name }}-service
                 port:
                   number: 5001
           - path: /
             pathType: Prefix
             backend:
               service:
-                name: {{ $.Values.frontend.name }}-service
+                name: {{ .Values.frontend.name }}-service
                 port:
                   number: 80
-          {{- end }}
-    {{- end }}
-{{- end }}
