@@ -39,6 +39,8 @@ ingress:
     alb.ingress.kubernetes.io/ssl-redirect: '443'
     alb.ingress.kubernetes.io/group.name: "twodo-app-stack"
     alb.ingress.kubernetes.io/certificate-domain-name: "twodo-app.org"
+    alb.ingress.kubernetes.io/backend-protocol: "HTTP"
+    alb.ingress.kubernetes.io/healthcheck-protocol: "HTTP"
     external-dns.alpha.kubernetes.io/hostname: "twodo-app.org, grafana.twodo-app.org, argocd.twodo-app.org"
     
   hosts:
