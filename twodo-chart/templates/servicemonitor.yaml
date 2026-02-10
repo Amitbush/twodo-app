@@ -1,0 +1,19 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: backend-monitor # השם המקוצר והנקי
+  labels:
+    release: prometheus-stack # קריטי כדי שפרומתאוס ימצא אותו
+    {{- include "twodo-chart.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "twodo-chart.selectorLabels" . | nindent 6 }}
+      # הסרתי את ה-app: twodo-backend הידני כי selectorLabels כבר מכיל את הלייבלים הנכונים של ה-Chart
+  namespaceSelector:
+    matchNames:
+      - {{ .Release.Namespace }}
+  endpoints:
+  - port: http 
+    path: /metrics
+    interval: 30s

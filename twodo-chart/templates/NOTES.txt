@@ -1,0 +1,10 @@
+TwoDo App is being deployed!
+
+Check your Pods status:
+  kubectl get pods
+
+To access the Frontend (TwoDo App) in Minikube:
+  minikube service {{ .Values.frontend.name }}-service --url
+
+To access the Backend API:
+  minikube service {{ .Values.backend.name }}-service --url

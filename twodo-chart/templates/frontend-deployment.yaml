@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.frontend.name }}
+spec:
+  replicas: {{ .Values.frontend.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Values.frontend.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.frontend.name }}
+    spec:
+      containers:
+        - name: frontend
+          image: "{{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag }}"
+          imagePullPolicy: {{ .Values.frontend.image.pullPolicy | default "Always" }}
+          # הפקודה המנצחת מה-Infra:
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              echo "Patching Frontend code..."
+              
+              # 1. החלפה של localhost ב- /api (בדיוק כמו ב-Infra)
+              find . -type f \( -name "*.js" -o -name "*.html" \) -exec sed -i 's|http://localhost:5001|/api|g' {} +
+              
+              # 2. ניקוי כפילויות (למקרה שהנתיב כבר תוקן)
+              find . -type f \( -name "*.js" -o -name "*.html" \) -exec sed -i 's|/api/api|/api|g' {} +
+              
+              echo "Patching complete. Starting Flask..."
+              python3 app.py
+          ports:
+            - containerPort: 5000 # הפורט שהקונטיינר מאזין לו (Flask)
+          env:
+            - name: REACT_APP_BACKEND_URL
+              value: {{ .Values.frontend.env.backendUrl | quote }}

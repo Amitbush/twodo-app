@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.backend.name }}
+spec:
+  replicas: {{ .Values.backend.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Values.backend.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.backend.name }}
+    spec:
+      containers:
+        - name: backend
+          image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}"
+          imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.backend.service.port }}
+          env:
+            # כאן הקסם קורה: אנחנו לוקחים את ה-URL המלא שטרפורם בנה ב-Secret
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: twodo-secrets
+                  key: db-url
+            # משתנים נוספים שהאפליקציה עשויה להזדקק להם
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: twodo-secrets
+                  key: db-user
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: twodo-secrets
+                  key: db-password
+          # טוען את כל שאר הערכים מהסיקרט כמשתני סביבה (כמו api-url וכו')
+          envFrom:
+            - secretRef:
+                name: twodo-secrets

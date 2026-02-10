@@ -1,0 +1,56 @@
+frontend:
+  name: twodo-frontend
+  replicaCount: 1
+  image:
+    repository: 993412842562.dkr.ecr.us-east-1.amazonaws.com/twodo-frontend
+    tag: latest
+    pullPolicy: Always
+  env:
+    # זה המשתנה הקריטי שיחליף את ה-localhost
+    backendUrl: "/api"
+  service:
+    port: 80
+
+backend:
+  name: twodo-backend
+  replicaCount: 1
+  image:
+    repository: 993412842562.dkr.ecr.us-east-1.amazonaws.com/twodo-backend
+    tag: latest
+    pullPolicy: Always
+  service:
+    port: 5001
+
+database:
+  name: postgres-db
+  host: postgres-service
+  image: postgres:15-alpine # הוספתי כדי למנוע שגיאות ב-Template
+  user: postgres
+  password: password
+
+ingress:
+  enabled: true
+  name: twodo-app-ingress
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS":443}]'
+    alb.ingress.kubernetes.io/ssl-redirect: '443'
+    alb.ingress.kubernetes.io/group.name: "twodo-app-stack"
+    alb.ingress.kubernetes.io/certificate-domain-name: "twodo-app.org"
+    external-dns.alpha.kubernetes.io/hostname: "twodo-app.org, grafana.twodo-app.org, argocd.twodo-app.org"
+    
+  hosts:
+    - host: twodo-app.org
+      paths:
+        - path: /
+          pathType: Prefix
+    - host: grafana.twodo-app.org
+      paths:
+        - path: /
+          pathType: Prefix
+    - host: argocd.twodo-app.org
+      paths:
+        - path: /
+          pathType: Prefix
